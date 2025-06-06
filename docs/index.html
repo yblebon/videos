@@ -11,6 +11,19 @@
       padding: 20px;
       background-color: #f5f5f5;
     }
+    .search-bar {
+      max-width: 1200px;
+      margin: 0 auto 20px auto;
+      text-align: center;
+    }
+    .search-bar input {
+      padding: 10px;
+      width: 300px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      outline: none;
+    }
     .container {
       max-width: 1200px;
       margin: 0 auto;
@@ -38,23 +51,86 @@
       color: #333;
     }
     .video-card .tag {
-      background-color: #e0e0e0;
       padding: 5px 10px;
       border-radius: 5px;
       font-size: 14px;
-      color: #555;
+      color: white;
       align-self: flex-start;
     }
+    /* Default tag colors - will be overridden by JS for unique tags */
+    .tag-music { background-color: #ff6b6b; }
+    .tag-tutorial { background-color: #4ecdc4; }
+    .tag-education { background-color: #45b7d1; }
+    .tag-default { background-color: #e0e0e0; color: #555; }
   </style>
 </head>
 <body>
+  <div class="search-bar">
+    <input type="text" id="tagSearch" placeholder="Search by tag (e.g., Music, Tutorial)">
+  </div>
   <div class="container" id="videoContainer"></div>
 
   <script>
     // URL of the JSON file on GitHub
     const jsonUrl = 'https://raw.githubusercontent.com/yblebon/datasources/main/videos.json';
 
-    // Fetch JSON data and create video cards
+    // Array of colors for unique tags
+    const tagColors = [
+      '#ff6b6b', '#4ecdc4', '#45b7d1', '#96c93d', '#ff9f55',
+      '#6b48ff', '#ffcc00', '#ff4081', '#00e676', '#8d6e63'
+    ];
+
+    // Store all video data for filtering
+    let allVideos = [];
+
+    // Function to generate a consistent color for a tag
+    function getTagColor(tag) {
+      const index = tag.toLowerCase().split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % tagColors.length;
+      return tagColors[index];
+    }
+
+    // Function to render video cards
+    function renderVideos(videos) {
+      const container = document.getElementById('videoContainer');
+      container.innerHTML = ''; // Clear existing content
+
+      if (videos.length === 0) {
+        container.innerHTML = '<p style="color: #555;">No videos match your search.</p>';
+        return;
+      }
+
+      videos.forEach(video => {
+        // Create video card element
+        const card = document.createElement('div');
+        card.className = 'video-card';
+
+        // Embed YouTube video
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube.com/embed/${video.id}`;
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+
+        // Add title
+        const title = document.createElement('h3');
+        title.textContent = video.title;
+
+        // Add tag with dynamic color
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.textContent = video.tag;
+        tag.style.backgroundColor = getTagColor(video.tag);
+
+        // Append elements to card
+        card.appendChild(iframe);
+        card.appendChild(title);
+        card.appendChild(tag);
+
+        // Append card to container
+        container.appendChild(card);
+      });
+    }
+
+    // Fetch JSON data and initialize
     fetch(jsonUrl)
       .then(response => {
         if (!response.ok) {
@@ -63,34 +139,17 @@
         return response.json();
       })
       .then(data => {
-        const container = document.getElementById('videoContainer');
-        data.forEach(video => {
-          // Create video card element
-          const card = document.createElement('div');
-          card.className = 'video-card';
+        allVideos = data; // Store all videos
+        renderVideos(allVideos); // Initial render
 
-          // Embed YouTube video
-          const iframe = document.createElement('iframe');
-          iframe.src = `https://www.youtube.com/embed/${video.id}`;
-          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-          iframe.allowFullscreen = true;
-
-          // Add title
-          const title = document.createElement('h3');
-          title.textContent = video.title;
-
-          // Add tag
-          const tag = document.createElement('div');
-          tag.className = 'tag';
-          tag.textContent = video.tag;
-
-          // Append elements to card
-          card.appendChild(iframe);
-          card.appendChild(title);
-          card.appendChild(tag);
-
-          // Append card to container
-          container.appendChild(card);
+        // Add search functionality
+        const searchInput = document.getElementById('tagSearch');
+        searchInput.addEventListener('input', () => {
+          const searchTerm = searchInput.value.trim().toLowerCase();
+          const filteredVideos = allVideos.filter(video =>
+            video.tag.toLowerCase().includes(searchTerm)
+          );
+          renderVideos(filteredVideos);
         });
       })
       .catch(error => {
