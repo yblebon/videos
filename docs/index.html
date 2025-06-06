@@ -24,6 +24,25 @@
       border-radius: 5px;
       outline: none;
     }
+    .tag-list {
+      max-width: 1200px;
+      margin: 10px auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .tag-item {
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      color: white;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+    .tag-item:hover {
+      opacity: 0.8;
+    }
     .container {
       max-width: 1200px;
       margin: 0 auto;
@@ -57,10 +76,6 @@
       color: white;
       align-self: flex-start;
     }
-    /* Default tag colors - will be overridden by JS for unique tags */
-    .tag-music { background-color: #ff6b6b; }
-    .tag-tutorial { background-color: #4ecdc4; }
-    .tag-education { background-color: #45b7d1; }
     .tag-default { background-color: #e0e0e0; color: #555; }
   </style>
 </head>
@@ -68,6 +83,7 @@
   <div class="search-bar">
     <input type="text" id="tagSearch" placeholder="Search by tag (e.g., Music, Tutorial)">
   </div>
+  <div class="tag-list" id="tagList"></div>
   <div class="container" id="videoContainer"></div>
 
   <script>
@@ -80,8 +96,9 @@
       '#6b48ff', '#ffcc00', '#ff4081', '#00e676', '#8d6e63'
     ];
 
-    // Store all video data for filtering
+    // Store all video data and unique tags
     let allVideos = [];
+    let uniqueTags = [];
 
     // Function to generate a consistent color for a tag
     function getTagColor(tag) {
@@ -130,6 +147,28 @@
       });
     }
 
+    // Function to render clickable tags
+    function renderTags() {
+      const tagList = document.getElementById('tagList');
+      tagList.innerHTML = ''; // Clear existing tags
+
+      uniqueTags.forEach(tag => {
+        const tagItem = document.createElement('div');
+        tagItem.className = 'tag-item';
+        tagItem.textContent = tag;
+        tagItem.style.backgroundColor = getTagColor(tag);
+        tagItem.addEventListener('click', () => {
+          const searchInput = document.getElementById('tagSearch');
+          searchInput.value = tag; // Fill search field with clicked tag
+          const filteredVideos = allVideos.filter(video =>
+            video.tag.toLowerCase().includes(tag.toLowerCase())
+          );
+          renderVideos(filteredVideos);
+        });
+        tagList.appendChild(tagItem);
+      });
+    }
+
     // Fetch JSON data and initialize
     fetch(jsonUrl)
       .then(response => {
@@ -140,7 +179,10 @@
       })
       .then(data => {
         allVideos = data; // Store all videos
-        renderVideos(allVideos); // Initial render
+        // Extract unique tags
+        uniqueTags = [...new Set(allVideos.map(video => video.tag))].sort();
+        renderVideos(allVideos); // Initial render of videos
+        renderTags(); // Render clickable tags
 
         // Add search functionality
         const searchInput = document.getElementById('tagSearch');
