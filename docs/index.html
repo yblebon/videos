@@ -5,113 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube Video Gallery</title>
   <style>
-    /* ALL ORIGINAL STYLES PRESERVED */
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .search-bar {
-      max-width: 1200px;
-      margin: 0 auto 20px auto;
-      text-align: center;
-    }
-    .search-bar input {
-      padding: 10px;
-      width: 300px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      outline: none;
-    }
-    .tag-list {
-      max-width: 1200px;
-      margin: 10px auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      justify-content: center;
-    }
-    .tag-item {
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 14px;
-      color: white;
-      cursor: pointer;
-      transition: opacity 0.3s;
-    }
-    .tag-item:hover {
-      opacity: 0.8;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-    }
-    .video-card {
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      cursor: pointer; /* Added for clickability */
-    }
-    /* Updated selector to include the placeholder div */
-    .video-card iframe, .video-placeholder {
-      width: 100%;
-      height: 200px;
-      border: none;
-      border-radius: 5px;
-      background-color: #000;
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .video-card h3 {
-      margin: 10px 0;
-      font-size: 18px;
-      color: #333;
-    }
-    .video-card .tag {
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 14px;
-      color: white;
-      align-self: flex-start;
-    }
-    /* Simple play button icon for the placeholder */
-    .play-btn {
-      width: 50px;
-      height: 50px;
-      background: rgba(255,0,0,0.8);
-      border-radius: 50%;
-      position: relative;
-    }
-    .play-btn::after {
-      content: "";
-      position: absolute;
-      top: 15px; left: 20px;
-      border-style: solid;
-      border-width: 10px 0 10px 15px;
-      border-color: transparent transparent transparent white;
-    }
+    /* STYLES PRESERVED */
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+    .search-bar { max-width: 1200px; margin: 0 auto 20px auto; text-align: center; }
+    .search-bar input { padding: 10px; width: 300px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
+    .tag-list { max-width: 1200px; margin: 10px auto; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .tag-item { padding: 5px 10px; border-radius: 5px; font-size: 14px; color: white; cursor: pointer; transition: opacity 0.3s; }
+    .tag-item:hover { opacity: 0.8; }
+    .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+    .video-card { background-color: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); padding: 15px; display: flex; flex-direction: column; cursor: pointer; }
+    .video-card iframe, .video-placeholder { width: 100%; height: 200px; border: none; border-radius: 5px; background-color: #000; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
+    .video-card h3 { margin: 10px 0; font-size: 16px; color: #333; min-height: 40px; }
+    .video-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag { padding: 3px 8px; border-radius: 4px; font-size: 12px; color: white; }
+    .play-btn { width: 50px; height: 50px; background: rgba(255,0,0,0.8); border-radius: 50%; position: relative; }
+    .play-btn::after { content: ""; position: absolute; top: 15px; left: 20px; border-style: solid; border-width: 10px 0 10px 15px; border-color: transparent transparent transparent white; }
   </style>
 </head>
 <body>
+
   <div class="search-bar">
-    <input type="text" id="tagSearch" placeholder="Search by tag (e.g., Music, Tutorial)">
+    <input type="text" id="tagSearch" placeholder="Search by tag...">
   </div>
   <div class="tag-list" id="tagList"></div>
-  <div class="container" id="videoContainer"></div>
+  <div class="container" id="videoContainer">
+    <p style="text-align: center; width: 100%;">Loading video files...</p>
+  </div>
 
   <script>
-    const jsonUrl = 'https://raw.githubusercontent.com/yblebon/datasources/main/videos.json';
+    const repoApiUrl = 'https://api.github.com/repos/yblebon/datasources/contents/videos';
     const tagColors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96c93d', '#ff9f55', '#6b48ff', '#ffcc00', '#ff4081', '#00e676', '#8d6e63'];
 
     let allVideos = [];
@@ -122,27 +44,28 @@
       return tagColors[index];
     }
 
-    // Swaps placeholder for actual iframe
     function loadVideo(container, id) {
       container.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
     }
 
     function renderVideos(videos) {
       const container = document.getElementById('videoContainer');
-      
-      // Use a document fragment or a single string for better performance
       if (videos.length === 0) {
-        container.innerHTML = '<p style="color: #555;">No videos match your search.</p>';
+        container.innerHTML = '<p>No videos found.</p>';
         return;
       }
 
       container.innerHTML = videos.map(video => `
-        <div class="video-card" onclick="loadVideo(this.querySelector('.video-placeholder'), '${video.id}')">
-          <div class="video-placeholder" style="background-image: url('https://img.youtube.com/vi/${video.id}/mqdefault.jpg')">
+        <div class="video-card" onclick="loadVideo(this.querySelector('.video-placeholder'), '${video.video_id}')">
+          <div class="video-placeholder" style="background-image: url('https://img.youtube.com/vi/${video.video_id}/mqdefault.jpg')">
             <div class="play-btn"></div>
           </div>
           <h3>${video.title}</h3>
-          <div class="tag" style="background-color: ${getTagColor(video.tag)}">${video.tag}</div>
+          <div class="video-tags">
+            ${video.tag_list.map(tag => `
+              <span class="tag" style="background-color: ${getTagColor(tag)}">${tag}</span>
+            `).join('')}
+          </div>
         </div>
       `).join('');
     }
@@ -156,32 +79,45 @@
       `).join('');
     }
 
-    // Helper for tag clicks
     window.filterByTag = (tag) => {
-      const searchInput = document.getElementById('tagSearch');
-      searchInput.value = tag;
-      const filteredVideos = allVideos.filter(video => video.tag.toLowerCase().includes(tag.toLowerCase()));
-      renderVideos(filteredVideos);
+      document.getElementById('tagSearch').value = tag;
+      const filtered = allVideos.filter(v => v.tag_list.some(t => t.toLowerCase().includes(tag.toLowerCase())));
+      renderVideos(filtered);
     };
 
-    fetch(jsonUrl)
-      .then(response => response.json())
-      .then(data => {
-        allVideos = data;
-        uniqueTags = [...new Set(allVideos.map(video => video.tag))].sort();
+    async function init() {
+      try {
+        const response = await fetch(repoApiUrl);
+        const files = await response.json();
+        
+        // Only get JSON files
+        const jsonFiles = files.filter(f => f.name.endsWith('.json'));
+
+        // Fetch each individual video file
+        allVideos = await Promise.all(
+          jsonFiles.map(file => fetch(file.download_url).then(res => res.json()))
+        );
+
+        // Collect all unique tags from all tag_lists
+        const tagsSet = new Set();
+        allVideos.forEach(v => v.tag_list.forEach(t => tagsSet.add(t)));
+        uniqueTags = Array.from(tagsSet).sort();
+
         renderVideos(allVideos);
         renderTags();
 
-        const searchInput = document.getElementById('tagSearch');
-        searchInput.addEventListener('input', () => {
-          const searchTerm = searchInput.value.trim().toLowerCase();
-          const filteredVideos = allVideos.filter(video => video.tag.toLowerCase().includes(searchTerm));
-          renderVideos(filteredVideos);
+        document.getElementById('tagSearch').addEventListener('input', (e) => {
+          const val = e.target.value.toLowerCase();
+          const filtered = allVideos.filter(v => v.tag_list.some(t => t.toLowerCase().includes(val)));
+          renderVideos(filtered);
         });
-      })
-      .catch(error => {
-        document.getElementById('videoContainer').innerHTML = '<p style="color: red;">Error loading videos.</p>';
-      });
+
+      } catch (err) {
+        document.getElementById('videoContainer').innerHTML = '<p style="color:red">Failed to load videos.</p>';
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>
