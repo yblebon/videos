@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube Video Gallery</title>
   <style>
-    /* STYLES PRESERVED */
     body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
     .search-bar { max-width: 1200px; margin: 0 auto 20px auto; text-align: center; }
     .search-bar input { padding: 10px; width: 300px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
@@ -25,15 +24,15 @@
 <body>
 
   <div class="search-bar">
-    <input type="text" id="tagSearch" placeholder="Search by tag...">
+    <input type="text" id="tagSearch" placeholder="Search by tag or title...">
   </div>
   <div class="tag-list" id="tagList"></div>
   <div class="container" id="videoContainer">
-    <p style="text-align: center; width: 100%;">Loading video files...</p>
+    <p style="text-align: center; width: 100%;">Loading videos...</p>
   </div>
 
   <script>
-    const repoApiUrl = 'https://api.github.com/repos/yblebon/datasources/contents/videos';
+    const repoApiUrl = 'https://static-conf.vercel.app/go/videos';
     const tagColors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96c93d', '#ff9f55', '#6b48ff', '#ffcc00', '#ff4081', '#00e676', '#8d6e63'];
 
     let allVideos = [];
@@ -56,15 +55,13 @@
       }
 
       container.innerHTML = videos.map(video => `
-        <div class="video-card" onclick="loadVideo(this.querySelector('.video-placeholder'), '${video.video_id}')">
-          <div class="video-placeholder" style="background-image: url('https://img.youtube.com/vi/${video.video_id}/mqdefault.jpg')">
+        <div class="video-card" onclick="loadVideo(this.querySelector('.video-placeholder'), '${video.id}')">
+          <div class="video-placeholder" style="background-image: url('https://img.youtube.com/vi/${video.id}/mqdefault.jpg')">
             <div class="play-btn"></div>
           </div>
           <h3>${video.title}</h3>
           <div class="video-tags">
-            ${video.tag_list.map(tag => `
-              <span class="tag" style="background-color: ${getTagColor(tag)}">${tag}</span>
-            `).join('')}
+            <span class="tag" style="background-color: ${getTagColor(video.tag)}">${video.tag}</span>
           </div>
         </div>
       `).join('');
@@ -81,39 +78,39 @@
 
     window.filterByTag = (tag) => {
       document.getElementById('tagSearch').value = tag;
-      const filtered = allVideos.filter(v => v.tag_list.some(t => t.toLowerCase().includes(tag.toLowerCase())));
+      const filtered = allVideos.filter(v => v.tag.toLowerCase().includes(tag.toLowerCase()));
       renderVideos(filtered);
     };
 
     async function init() {
       try {
         const response = await fetch(repoApiUrl);
-        const files = await response.json();
-        
-        // Only get JSON files
-        const jsonFiles = files.filter(f => f.name.endsWith('.json'));
+        if (!response.ok) throw new Error('Failed to fetch');
 
-        // Fetch each individual video file
-        allVideos = await Promise.all(
-          jsonFiles.map(file => fetch(file.download_url).then(res => res.json()))
-        );
+        allVideos = await response.json();   // ← Direct array from /go/videos
 
-        // Collect all unique tags from all tag_lists
-        const tagsSet = new Set();
-        allVideos.forEach(v => v.tag_list.forEach(t => tagsSet.add(t)));
-        uniqueTags = Array.from(tagsSet).sort();
+        // Collect unique tags
+        uniqueTags = [...new Set(allVideos.map(v => v.tag))].sort();
 
         renderVideos(allVideos);
         renderTags();
 
         document.getElementById('tagSearch').addEventListener('input', (e) => {
-          const val = e.target.value.toLowerCase();
-          const filtered = allVideos.filter(v => v.tag_list.some(t => t.toLowerCase().includes(val)));
+          const val = e.target.value.toLowerCase().trim();
+          if (!val) {
+            renderVideos(allVideos);
+            return;
+          }
+          const filtered = allVideos.filter(v =>
+            v.title.toLowerCase().includes(val) ||
+            v.tag.toLowerCase().includes(val)
+          );
           renderVideos(filtered);
         });
 
       } catch (err) {
-        document.getElementById('videoContainer').innerHTML = '<p style="color:red">Failed to load videos.</p>';
+        document.getElementById('videoContainer').innerHTML = '<p style="color:red">Failed to load videos from endpoint.</p>';
+        console.error(err);
       }
     }
 
