@@ -3,115 +3,788 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Video Gallery</title>
+  <title>Video Gallery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
-    .search-bar { max-width: 1200px; margin: 0 auto 20px auto; text-align: center; }
-    .search-bar input { padding: 10px; width: 300px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
-    .tag-list { max-width: 1200px; margin: 10px auto; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-    .tag-item { padding: 5px 10px; border-radius: 5px; font-size: 14px; color: white; cursor: pointer; transition: opacity 0.3s; }
-    .tag-item:hover { opacity: 0.8; }
-    .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-    .video-card { background-color: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); padding: 15px; display: flex; flex-direction: column; cursor: pointer; }
-    .video-card iframe, .video-placeholder { width: 100%; height: 200px; border: none; border-radius: 5px; background-color: #000; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
-    .video-card h3 { margin: 10px 0; font-size: 16px; color: #333; min-height: 40px; }
-    .video-tags { display: flex; flex-wrap: wrap; gap: 5px; }
-    .tag { padding: 3px 8px; border-radius: 4px; font-size: 12px; color: white; }
-    .play-btn { width: 50px; height: 50px; background: rgba(255,0,0,0.8); border-radius: 50%; position: relative; }
-    .play-btn::after { content: ""; position: absolute; top: 15px; left: 20px; border-style: solid; border-width: 10px 0 10px 15px; border-color: transparent transparent transparent white; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0d0d;
+      --surface:     #161616;
+      --surface2:    #1f1f1f;
+      --border:      rgba(255,255,255,0.07);
+      --border-hi:   rgba(255,255,255,0.14);
+      --text:        #f0ede8;
+      --muted:       #7a7570;
+      --accent:      #e8c97a;
+      --accent-dim:  rgba(232,201,122,0.12);
+      --red:         #e84343;
+      --ease-out:    cubic-bezier(0.16,1,0.3,1);
+      --font-display:'DM Serif Display', Georgia, serif;
+      --font-body:   'DM Sans', system-ui, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Subtle noise grain */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 52px 48px 40px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 28px;
+    }
+
+    .header-top { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 400;
+      line-height: 1.08;
+      color: var(--text);
+    }
+
+    h1 em { font-style: italic; color: var(--accent); }
+
+    .video-count {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 10px;
+      min-height: 18px;
+    }
+
+    /* Search — centered */
+    .search-wrap { position: relative; width: 100%; max-width: 480px; }
+
+    .search-icon {
+      position: absolute;
+      left: 16px; top: 50%;
+      transform: translateY(-50%);
+      width: 16px; height: 16px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    #tagSearch {
+      background: var(--surface);
+      border: 1px solid var(--border-hi);
+      border-radius: 40px;
+      padding: 13px 20px 13px 44px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text);
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+    }
+
+    #tagSearch::placeholder { color: var(--muted); }
+
+    #tagSearch:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    /* ── Tag strip ── */
+    .tags-section {
+      padding: 18px 48px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .tags-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .tag-item {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 13px;
+      border-radius: 40px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.12s, color 0.15s;
+      letter-spacing: 0.02em;
+    }
+
+    .tag-item:hover { border-color: var(--border-hi); transform: translateY(-1px); }
+
+    .tag-item.active {
+      background: var(--accent-dim) !important;
+      border-color: rgba(232,201,122,0.4) !important;
+      color: var(--accent) !important;
+    }
+
+    .tag-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* ── Main grid ── */
+    main { padding: 36px 48px 80px; }
+
+    #videoContainer {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    /* ── Card ── */
+    .video-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+      font-family: var(--font-body);
+      text-align: left;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s, transform 0.28s var(--ease-out), box-shadow 0.28s var(--ease-out);
+      animation: cardIn 0.4s var(--ease-out) both;
+      /* PERF: skip rendering & layout for off-screen cards */
+      content-visibility: auto;
+      contain-intrinsic-size: 0 320px;
+    }
+
+    /* PERF: virtual-scroll sentinel — invisible div that triggers loading more */
+    #loadSentinel {
+      grid-column: 1/-1;
+      height: 1px;
+      visibility: hidden;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .video-card:hover {
+      border-color: var(--border-hi);
+      transform: translateY(-4px);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.55);
+    }
+
+    .video-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Thumb */
+    .thumb-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #111;
+      overflow: hidden;
+    }
+
+    .thumb-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s var(--ease-out), opacity 0.35s;
+      opacity: 0;
+    }
+
+    .thumb-img.loaded { opacity: 1; }
+    .video-card:hover .thumb-img { transform: scale(1.05); }
+
+    .play-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 55%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .video-card:hover .play-overlay { opacity: 1; }
+
+    .play-circle {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: var(--red);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: scale(0.8);
+      transition: transform 0.22s var(--ease-out), box-shadow 0.22s;
+      box-shadow: 0 4px 20px rgba(232,67,67,0.45);
+    }
+
+    .video-card:hover .play-circle {
+      transform: scale(1);
+      box-shadow: 0 8px 28px rgba(232,67,67,0.65);
+    }
+
+    .play-triangle {
+      width: 0; height: 0;
+      border-style: solid;
+      border-width: 7px 0 7px 13px;
+      border-color: transparent transparent transparent #fff;
+      margin-left: 3px;
+    }
+
+    /* iframe replaces thumb */
+    .thumb-wrap iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+
+    /* Card body */
+    .card-body {
+      padding: 14px 16px 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.5;
+      color: var(--text);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-footer { display: flex; gap: 8px; align-items: center; margin-top: auto; }
+
+    .tag-pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 40px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Skeleton ── */
+    .skeleton {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .skeleton-thumb { aspect-ratio: 16/9; background: var(--surface2); }
+    .skeleton-body { padding: 14px 16px 16px; }
+
+    .skeleton-line {
+      height: 13px;
+      border-radius: 4px;
+      background: var(--surface2);
+      margin-bottom: 9px;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+
+    .skeleton-line.short { width: 50%; }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.6; }
+      50%       { opacity: 1; }
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 24px;
+    }
+
+    .empty-icon { font-size: 40px; opacity: 0.25; margin-bottom: 16px; }
+
+    .empty-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .empty-sub { font-size: 14px; color: var(--muted); }
+
+    /* ── Error ── */
+    .status-msg { grid-column: 1/-1; text-align: center; padding: 80px 0; color: var(--muted); }
+    .status-msg.error { color: var(--red); }
+
+    /* ── Responsive ── */
+    @media (max-width: 680px) {
+      header, .tags-section, main { padding-left: 20px; padding-right: 20px; }
+      header { padding-top: 32px; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="search-bar">
-    <input type="text" id="tagSearch" placeholder="Search by tag or title...">
-  </div>
-  <div class="tag-list" id="tagList"></div>
-  <div class="container" id="videoContainer">
-    <p style="text-align: center; width: 100%;">Loading videos...</p>
-  </div>
+  <header>
+    <div class="header-top">
+      <p class="eyebrow">Curated Collection</p>
+      <h1>Video <em>Gallery</em></h1>
+      <p class="video-count" id="headerCount"></p>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+        <circle cx="8.5" cy="8.5" r="5.5"/>
+        <path d="M15 15l-3-3" stroke-linecap="round"/>
+      </svg>
+      <input
+        type="search"
+        id="tagSearch"
+        placeholder="Search titles or tags…"
+        aria-label="Search videos by title or tag"
+        autocomplete="off"
+      >
+    </div>
+  </header>
+
+  <nav aria-label="Filter by tag">
+    <div class="tags-section">
+      <span class="tags-label">Filter</span>
+      <div id="tagList" style="display:contents"></div>
+    </div>
+  </nav>
+
+  <main>
+    <div id="videoContainer" role="list" aria-live="polite" aria-label="Video results"></div>
+  </main>
 
   <script>
-    const repoApiUrl = 'https://static-conf.vercel.app/go/videos';
-    const tagColors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96c93d', '#ff9f55', '#6b48ff', '#ffcc00', '#ff4081', '#00e676', '#8d6e63'];
+    // ── Config ─────────────────────────────────────────────────────────────────
+    const REPO_API_URL  = 'https://static-conf.vercel.app/go/videos';
+    const DEBOUNCE_MS   = 150;
+    const CACHE_KEY     = 'vgallery_v1';
+    const CACHE_TTL_MS  = 5 * 60 * 1000; // 5 min
+    // PERF: render cards in pages so initial paint is fast, append more on scroll
+    const PAGE_SIZE     = 12;
 
-    let allVideos = [];
-    let uniqueTags = [];
+    const TAG_PALETTE = [
+      ['rgba(232,100,100,0.18)', '#e87878'],
+      ['rgba(78,205,196,0.18)',  '#4ecdc4'],
+      ['rgba(69,183,209,0.18)',  '#45b7d1'],
+      ['rgba(150,201,61,0.18)',  '#8ac236'],
+      ['rgba(255,159,85,0.18)',  '#ff9f55'],
+      ['rgba(107,72,255,0.18)',  '#9080ff'],
+      ['rgba(232,201,122,0.18)', '#e8c97a'],
+      ['rgba(255,64,129,0.18)',  '#ff4081'],
+      ['rgba(0,200,117,0.18)',   '#00c875'],
+      ['rgba(141,110,99,0.18)',  '#b09080'],
+    ];
 
-    function getTagColor(tag) {
-      const index = tag.toLowerCase().split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % tagColors.length;
-      return tagColors[index];
+    function getTagStyle(tag) {
+      const idx = tag.toLowerCase()
+        .split('').reduce((s, c) => s + c.charCodeAt(0), 0) % TAG_PALETTE.length;
+      return TAG_PALETTE[idx];
     }
 
-    function loadVideo(container, id) {
-      container.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}?autoplay=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    // ── YouTube ID extraction ──────────────────────────────────────────────────
+    function extractYouTubeId(raw) {
+      if (!raw || typeof raw !== 'string') return null;
+      raw = raw.trim();
+      if (/^[\w-]{11}$/.test(raw)) return raw;
+      try {
+        const url = new URL(raw);
+        if (url.hostname === 'youtu.be') {
+          const id = url.pathname.slice(1).split('?')[0];
+          if (/^[\w-]{11}$/.test(id)) return id;
+        }
+        if (url.hostname.includes('youtube.com')) {
+          const m = url.pathname.match(/\/(?:shorts|embed|v)\/([\w-]{11})/);
+          if (m) return m[1];
+          const v = url.searchParams.get('v');
+          if (v && /^[\w-]{11}$/.test(v)) return v;
+        }
+      } catch { /* not a URL */ }
+      return null;
+    }
+
+    // ── Security ───────────────────────────────────────────────────────────────
+    function isValidVideo(v) {
+      return v !== null && typeof v === 'object' &&
+        typeof v.id === 'string' && v.id.length > 0 &&
+        typeof v.title === 'string' && typeof v.tag === 'string';
+    }
+
+    // ── Debounce ───────────────────────────────────────────────────────────────
+    function debounce(fn, ms) {
+      let t;
+      return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+    }
+
+    // ── PERF: sessionStorage response cache ────────────────────────────────────
+    // Avoids a network round-trip on revisits within the same session.
+    function readCache() {
+      try {
+        const raw = sessionStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const { ts, data } = JSON.parse(raw);
+        if (Date.now() - ts > CACHE_TTL_MS) { sessionStorage.removeItem(CACHE_KEY); return null; }
+        return data;
+      } catch { return null; }
+    }
+
+    function writeCache(data) {
+      try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); }
+      catch { /* quota exceeded — silently skip */ }
+    }
+
+    // ── PERF: pre-built search index ───────────────────────────────────────────
+    // Lowercase title+tag computed once at load time, not on every keystroke.
+    function buildIndex(videos) {
+      return videos.map(v => ({ ...v, _titleLc: v.title.toLowerCase(), _tagLc: v.tag.toLowerCase() }));
+    }
+
+    function filterVideos(indexed, val, tagFilter) {
+      if (!val && !tagFilter) return indexed;
+      return indexed.filter(v => {
+        if (tagFilter && v._tagLc !== tagFilter) return false;
+        if (val && !v._titleLc.includes(val) && !v._tagLc.includes(val)) return false;
+        return true;
+      });
+    }
+
+    // ── Skeletons ──────────────────────────────────────────────────────────────
+    function renderSkeletons(n = 6) {
+      const c = document.getElementById('videoContainer');
+      c.replaceChildren();
+      const f = document.createDocumentFragment();
+      for (let i = 0; i < n; i++) {
+        const el = document.createElement('div');
+        el.className = 'skeleton';
+        el.setAttribute('aria-hidden', 'true');
+        el.innerHTML = '<div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>';
+        f.appendChild(el);
+      }
+      c.appendChild(f);
+    }
+
+    // ── Build single card ──────────────────────────────────────────────────────
+    function buildVideoCard(video, index) {
+      const youtubeId = extractYouTubeId(video.id);
+      const [tagBg, tagFg] = getTagStyle(video.tag);
+
+      const card = document.createElement('button');
+      card.className = 'video-card';
+      card.setAttribute('role', 'listitem');
+      card.setAttribute('aria-label', 'Play: ' + video.title);
+      card.style.animationDelay = Math.min(index * 30, 240) + 'ms';
+      card.dataset.videoId   = youtubeId ?? video.id;
+      card.dataset.isYoutube = youtubeId ? '1' : '0';
+
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'thumb-wrap';
+
+      if (youtubeId) {
+        const img = document.createElement('img');
+        img.className = 'thumb-img';
+        img.alt = video.title;
+        img.decoding = 'async';
+        img.dataset.src = 'https://img.youtube.com/vi/' + encodeURIComponent(youtubeId) + '/hqdefault.jpg';
+        img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+        img.addEventListener('error', () => {
+          if (!img.dataset.fallback) {
+            img.dataset.fallback = '1';
+            img.src = 'https://img.youtube.com/vi/' + encodeURIComponent(youtubeId) + '/mqdefault.jpg';
+          }
+        }, { once: true });
+
+        const overlay = document.createElement('div');
+        overlay.className = 'play-overlay';
+        overlay.setAttribute('aria-hidden', 'true');
+        const circle = document.createElement('div');
+        circle.className = 'play-circle';
+        const tri = document.createElement('div');
+        tri.className = 'play-triangle';
+        circle.appendChild(tri);
+        overlay.appendChild(circle);
+        thumbWrap.appendChild(img);
+        thumbWrap.appendChild(overlay);
+      } else {
+        const ph = document.createElement('div');
+        ph.style.cssText = 'width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;';
+        const lbl = document.createElement('span');
+        lbl.style.cssText = 'font-size:12px;color:#555;letter-spacing:0.05em;';
+        lbl.textContent = 'External video';
+        ph.appendChild(lbl);
+        thumbWrap.appendChild(ph);
+      }
+
+      const body = document.createElement('div');
+      body.className = 'card-body';
+      const title = document.createElement('p');
+      title.className = 'card-title';
+      title.textContent = video.title;
+      const footer = document.createElement('div');
+      footer.className = 'card-footer';
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.style.background = tagBg;
+      pill.style.color = tagFg;
+      pill.textContent = video.tag;
+
+      footer.appendChild(pill);
+      body.appendChild(title);
+      body.appendChild(footer);
+      card.appendChild(thumbWrap);
+      card.appendChild(body);
+      return card;
+    }
+
+    // ── Load iframe ────────────────────────────────────────────────────────────
+    function loadVideo(card) {
+      const id = card.dataset.videoId;
+      const isYT = card.dataset.isYoutube === '1';
+      const thumbWrap = card.querySelector('.thumb-wrap');
+      if (!id || !thumbWrap) return;
+
+      const iframe = document.createElement('iframe');
+      iframe.title = card.querySelector('.card-title')?.textContent ?? 'Video';
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+      iframe.allowFullscreen = true;
+
+      if (isYT) {
+        const src = new URL('https://www.youtube.com/embed/' + encodeURIComponent(id));
+        src.searchParams.set('autoplay', '1');
+        src.searchParams.set('rel', '0');
+        iframe.src = src.toString();
+      } else {
+        iframe.src = id;
+      }
+
+      thumbWrap.replaceChildren(iframe);
+      card.setAttribute('aria-label', 'Now playing: ' + (card.querySelector('.card-title')?.textContent ?? ''));
+    }
+
+    // ── PERF: virtual pagination ───────────────────────────────────────────────
+    // Renders PAGE_SIZE cards immediately; appends more as sentinel scrolls in.
+    let _rs = { videos: [], offset: 0, sentinelObs: null };
+
+    function appendNextPage() {
+      const { videos, offset } = _rs;
+      if (offset >= videos.length) return;
+      const end  = Math.min(offset + PAGE_SIZE, videos.length);
+      const frag = document.createDocumentFragment();
+      for (let i = offset; i < end; i++) frag.appendChild(buildVideoCard(videos[i], i));
+      _rs.offset = end;
+
+      const c        = document.getElementById('videoContainer');
+      const sentinel = document.getElementById('loadSentinel');
+      if (sentinel) c.insertBefore(frag, sentinel); else c.appendChild(frag);
+
+      // Observe newly added lazy images
+      if (window._imgObserver) {
+        c.querySelectorAll('img[data-src]').forEach(img => window._imgObserver.observe(img));
+      } else {
+        c.querySelectorAll('img[data-src]').forEach(img => { img.src = img.dataset.src; });
+      }
+
+      if (_rs.offset >= videos.length && _rs.sentinelObs) _rs.sentinelObs.disconnect();
     }
 
     function renderVideos(videos) {
-      const container = document.getElementById('videoContainer');
+      const c = document.getElementById('videoContainer');
+      c.replaceChildren();
+      if (_rs.sentinelObs) { _rs.sentinelObs.disconnect(); _rs.sentinelObs = null; }
+
       if (videos.length === 0) {
-        container.innerHTML = '<p>No videos found.</p>';
+        const el = document.createElement('div');
+        el.className = 'empty-state';
+        const icon = document.createElement('div'); icon.className = 'empty-icon'; icon.textContent = '⌕';
+        const t = document.createElement('p'); t.className = 'empty-title'; t.textContent = 'Nothing found';
+        const s = document.createElement('p'); s.className = 'empty-sub'; s.textContent = 'Try a different search term or clear the filter.';
+        el.appendChild(icon); el.appendChild(t); el.appendChild(s);
+        c.appendChild(el);
         return;
       }
 
-      container.innerHTML = videos.map(video => `
-        <div class="video-card" onclick="loadVideo(this.querySelector('.video-placeholder'), '${video.id}')">
-          <div class="video-placeholder" style="background-image: url('https://img.youtube.com/vi/${video.id}/mqdefault.jpg')">
-            <div class="play-btn"></div>
-          </div>
-          <h3>${video.title}</h3>
-          <div class="video-tags">
-            <span class="tag" style="background-color: ${getTagColor(video.tag)}">${video.tag}</span>
-          </div>
-        </div>
-      `).join('');
+      const sentinel = document.createElement('div');
+      sentinel.id = 'loadSentinel';
+      c.appendChild(sentinel);
+
+      _rs = { videos, offset: 0, sentinelObs: null };
+      appendNextPage();
+
+      if ('IntersectionObserver' in window) {
+        const obs = new IntersectionObserver(
+          (entries) => { if (entries[0].isIntersecting) appendNextPage(); },
+          { rootMargin: '400px' }
+        );
+        obs.observe(sentinel);
+        _rs.sentinelObs = obs;
+      } else {
+        while (_rs.offset < videos.length) appendNextPage();
+      }
     }
 
-    function renderTags() {
-      const tagList = document.getElementById('tagList');
-      tagList.innerHTML = uniqueTags.map(tag => `
-        <div class="tag-item" style="background-color: ${getTagColor(tag)}" onclick="filterByTag('${tag}')">
-          ${tag}
-        </div>
-      `).join('');
+    // ── Render tags ────────────────────────────────────────────────────────────
+    function renderTags(tags, activeTag) {
+      const tl = document.getElementById('tagList');
+      tl.replaceChildren();
+      const frag = document.createDocumentFragment();
+
+      const all = document.createElement('button');
+      all.className = 'tag-item' + (!activeTag ? ' active' : '');
+      all.dataset.tag = '';
+      all.textContent = 'All';
+      frag.appendChild(all);
+
+      for (const tag of tags) {
+        const isActive = activeTag === tag;
+        const [bg, fg] = getTagStyle(tag);
+        const btn = document.createElement('button');
+        btn.className = 'tag-item' + (isActive ? ' active' : '');
+        if (isActive) { btn.style.background = bg; btn.style.color = fg; }
+        btn.dataset.tag = tag;
+        btn.setAttribute('aria-label', 'Filter by tag: ' + tag);
+        btn.textContent = tag;
+        frag.appendChild(btn);
+      }
+      tl.appendChild(frag);
     }
 
-    window.filterByTag = (tag) => {
-      document.getElementById('tagSearch').value = tag;
-      const filtered = allVideos.filter(v => v.tag.toLowerCase().includes(tag.toLowerCase()));
-      renderVideos(filtered);
-    };
+    // PERF: defer tag strip render to idle — videos more important to paint first
+    function scheduleRenderTags(tags, activeTag) {
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => renderTags(tags, activeTag), { timeout: 500 });
+      } else {
+        setTimeout(() => renderTags(tags, activeTag), 0);
+      }
+    }
 
+    // ── PERF: IntersectionObserver lazy thumbnail loading ──────────────────────
+    function initLazyLoad() {
+      if (!('IntersectionObserver' in window)) return;
+      window._imgObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const img = entry.target;
+          if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
+          window._imgObserver.unobserve(img);
+        }
+      }, { rootMargin: '200px' });
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────────────
     async function init() {
+      renderSkeletons(6);
+      initLazyLoad();
+
+      const controller = new AbortController();
+      window._galleryAbort = () => controller.abort();
+
+      let indexed    = [];
+      let uniqueTags = [];
+      let activeTag  = '';
+
+      const setCount = (n) => {
+        document.getElementById('headerCount').textContent =
+          n + ' video' + (n !== 1 ? 's' : '');
+      };
+
       try {
-        const response = await fetch(repoApiUrl);
-        if (!response.ok) throw new Error('Failed to fetch');
+        // PERF: try cache first — skip network entirely if fresh data exists
+        let raw = readCache();
+        if (!raw) {
+          const res = await fetch(REPO_API_URL, { signal: controller.signal });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          raw = await res.json();
+          if (!Array.isArray(raw)) throw new Error('Expected an array.');
+          writeCache(raw);
+        }
 
-        allVideos = await response.json();   // ← Direct array from /go/videos
+        const valid = raw.filter(isValidVideo);
+        // PERF: build lowercase index once — filterVideos reuses it every keystroke
+        indexed    = buildIndex(valid);
+        uniqueTags = [...new Set(indexed.map(v => v.tag))].sort();
 
-        // Collect unique tags
-        uniqueTags = [...new Set(allVideos.map(v => v.tag))].sort();
-
-        renderVideos(allVideos);
-        renderTags();
-
-        document.getElementById('tagSearch').addEventListener('input', (e) => {
-          const val = e.target.value.toLowerCase().trim();
-          if (!val) {
-            renderVideos(allVideos);
-            return;
-          }
-          const filtered = allVideos.filter(v =>
-            v.title.toLowerCase().includes(val) ||
-            v.tag.toLowerCase().includes(val)
-          );
-          renderVideos(filtered);
-        });
+        setCount(indexed.length);
+        renderVideos(indexed);
+        // PERF: tag strip deferred to idle — not critical for first paint
+        scheduleRenderTags(uniqueTags, activeTag);
 
       } catch (err) {
-        document.getElementById('videoContainer').innerHTML = '<p style="color:red">Failed to load videos from endpoint.</p>';
-        console.error(err);
+        if (err.name === 'AbortError') return;
+        const c = document.getElementById('videoContainer');
+        c.replaceChildren();
+        const msg = document.createElement('p');
+        msg.className = 'status-msg error';
+        msg.textContent = 'Failed to load videos. Please try again later.';
+        c.appendChild(msg);
+        console.error('[VideoGallery]', err);
+        return;
       }
+
+      // Event delegation — video cards
+      document.getElementById('videoContainer').addEventListener('click', (e) => {
+        const card = e.target.closest('.video-card');
+        if (card) loadVideo(card);
+      });
+
+      // Event delegation — tag buttons
+      document.getElementById('tagList').addEventListener('click', (e) => {
+        const btn = e.target.closest('.tag-item');
+        if (!btn) return;
+        activeTag = btn.dataset.tag ?? '';
+        document.getElementById('tagSearch').value = activeTag;
+        const filtered = filterVideos(indexed, '', activeTag);
+        renderVideos(filtered);
+        scheduleRenderTags(uniqueTags, activeTag);
+        setCount(filtered.length);
+      });
+
+      // Debounced search — hits pre-built index, no per-item .toLowerCase()
+      document.getElementById('tagSearch').addEventListener('input', debounce((e) => {
+        const val = e.target.value.trim().toLowerCase();
+        activeTag = '';
+        const filtered = filterVideos(indexed, val, '');
+        renderVideos(filtered);
+        scheduleRenderTags(uniqueTags, '');
+        setCount(filtered.length);
+      }, DEBOUNCE_MS));
     }
 
     init();
